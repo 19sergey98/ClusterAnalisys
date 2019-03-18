@@ -3,7 +3,6 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 
 
-
 class DataPreviewWindow(QDialog):
 
     def __init__(self, data):
@@ -31,7 +30,6 @@ class DataPreviewWindow(QDialog):
         self.buttonGroup.setCellWidget(1, 0, self.cancelbutton)
         self.buttonGroup.setCellWidget(2, 0, self.normalisebutton)
         self.buttonGroup.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Expanding)
-
 
         self.dataPreviewTable = QTableWidget()
         self.dataPreviewTable.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Expanding)

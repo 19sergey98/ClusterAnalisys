@@ -14,7 +14,6 @@ class ClusterPointsView(QMainWindow):
     """ В этом окне можно видеть таблицу со списком точек, входящих в кластер. Точки можно удалять и добавлять.
 
     """
-
     def __init__(self, parent, cluster):
         super().__init__(parent)
         self.cluster = cluster

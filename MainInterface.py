@@ -6,15 +6,20 @@ import matplotlib
 matplotlib.use('agg')
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
+from Lib import shutil
+from pandas import DataFrame
 
+import matplotlib.pyplot as plt
+import xlwt
 import GraphInspection
 from ClusterAdjustments import ClusterDialog
 from ClusterPointsAdjustments import ClusterPointsView
 from DBScanImplementation import DBScanWindow
+from TSNEImplementation import TSNEWindow
 from DataPreview import DataPreviewWindow
 from AdditionalProjection import AdditionalProjectionWindow
 from UtilityClasses import *
+from TsneSolver import *
 
 import Constants
 
@@ -39,6 +44,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.circle = None
+        self.current_data_file_name = None
+        self.temp_data_file_name = "tempdatafile.xlsx"
 
         self.menubar = self.menuBar()
         self.fileMenu = self.menubar.addMenu("Файл")
@@ -51,14 +58,18 @@ class MainWindow(QMainWindow):
         self.optionsMenu.addAction(self.additionalProjection)
         self.algorithmsMenu = self.menubar.addMenu("Алгоритмы")
         self.dbscanoption = QAction("Алгоритм DBScan", self)
+        self.tsneoption = QAction("Алгоритм t-SNE", self)
         self.dbscanoption.triggered.connect(self.dbscanoptionChosen)
+        self.tsneoption.triggered.connect(self.tsneoptionChosen)
         self.algorithmsMenu.addAction(self.dbscanoption)
+        self.algorithmsMenu.addAction(self.tsneoption)
         self.algorithmsMenu.setEnabled(False)
 
         self.mainTabs = QTabWidget()
         self.mainTabs.setStyleSheet("QTabWidget { border: 0px solid black }; ");
         self.setCentralWidget(self.mainTabs)
         self.figure = Figure()
+        self.additional_figure = Figure()
         self.matrixWidget = FigureCanvas(self.figure)
         self.matrixWidget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         self.matrixWidget.setMinimumSize(640, 480)
@@ -90,6 +101,12 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon('icon\\app_icon.png'))
         self.setGeometry(100, 100, 640, 480)
         self.showMaximized()
+        #self.solver = TSNESolver(self)
+        self.temp_tsne_size = 2
+        #self.globalData = GlobalData()
+
+    def get_additional_figure(self):
+        return self.additional_figure
 
     def openFilePressed(self):
         """ Действия, выполняемые при нажатии кнопки открытия файла
@@ -97,20 +114,43 @@ class MainWindow(QMainWindow):
         """
         filename = QFileDialog.getOpenFileName(self, 'Open file', "data")[0]
         if len(filename) > 0:
-            newData = DataPreviewWindow.preprocessData(GlobalData(Utils.readExcelData(filename))) # вызываем диалог предобработки данных
+            d_data = GlobalData(Utils.readExcelData(filename))
+            #d_d_data
+            initial_len = len((list(d_data).__getitem__(0)))
+            # here we'll try to process data
+            # get tsne columns
+            # from initial size to initial-1
+            temp = TsneSolver(30.0, 500, initial_len - 1, initial_len)
+            self.temp_tsne_data = temp.reduce_dim(d_data)
+            self.temp_tsne_size = len((list(self.temp_tsne_data).__getitem__(0)))
+            ###
+            print("initial data",list(d_data).__getitem__(0))
+            for i in range(0, self.temp_tsne_size):
+                d_data.addColumns(Column("tsne_var"+str(i), self.get_temp_tsne_column(i), i+initial_len),"tsne_var"+str(i))
+            #
+            print("final data", list(d_data).__getitem__(0))
+            newData = DataPreviewWindow.preprocessData(d_data) # вызываем диалог предобработки данных
+            self.current_data_file_name = filename # put into c_d_f_n filename
+            shutil.copy(self.current_data_file_name,self.temp_data_file_name)# copied data to temp file
             if newData is not None:
                 self.startWorkingWithData(newData)
 
     def startWorkingWithData(self, data):
         """ Инициализация данных в программе
-
         :param data: инициализируемые данные - это объект типа Data
         """
+
         self.globalData = data
         self.cleanupAppData()
+
         Utils.fillTableWithData(self.dataTable, self.globalData)
         self.initCanvas()
         self.algorithmsMenu.setEnabled(True)
+
+    def add_tsne_to_temp_excel(self, num):
+        book = xlwt.Workbook(self.temp_data_file_name)
+        sh = book.add_sheet("tsne")
+
 
     def canvasClicked(self, event):
         """ Обработчик кликов мышью по области с графиками
@@ -249,8 +289,11 @@ class MainWindow(QMainWindow):
 
         """
         columns = self.globalData.getSignificantColumns()
+        #globalData.addRow()
         columnCount = self.globalData.significantColumnCount()
-        self.matrixWidget.resize(columnCount * 200, columnCount * 200)
+
+        self.matrixWidget.resize((columnCount+self.temp_tsne_size+1) * 200, (columnCount+self.temp_tsne_size)* 200)
+
         for j in range(0, columnCount):
             for i in range(0, columnCount):
                 columnForAbscissas = columns[i]
@@ -268,15 +311,68 @@ class MainWindow(QMainWindow):
                               markersize=Constants.DEFAULT_MARKER_SIZE_SMALL,
                               color=Constants.DEFAULT_POINT_COLOR)
                     axes.set_title(columnForOrdinates.getName() + "_" + columnForAbscissas.getName())
-                for item in ([axes.title, axes.xaxis.label, axes.yaxis.label] +
+                '''for item in ([axes.title, axes.xaxis.label, axes.yaxis.label] +
                                  axes.get_xticklabels() + axes.get_yticklabels()):
                     item.set_fontsize(8)
-                axes.tick_params(axis=u'both', which=u'both', length=0)
+                axes.tick_params(axis=u'both', which=u'both', length=0)'''
+
+        # additional t-SNE projections
+        '''
+        for j in range(0, self.temp_tsne_size):
+            for i in range(0, self.temp_tsne_size):
+                columnForAbscissas = Column("tsne var "+str(i), self.get_temp_tsne_column(i), columnCount+i)
+                columnForOrdinates = Column("tsne var "+str(j), self.get_temp_tsne_column(j), columnCount+j)
+                axes = self.figure.add_subplot(columnCount+self.temp_tsne_size+1, columnCount+self.temp_tsne_size, columnCount*columnCount + j*self.temp_tsne_size + i + 1)
+                axes.scatterMatrixXIndex = columnForAbscissas.getIndex()
+                axes.scatterMatrixYIndex = columnForOrdinates.getIndex()
+                if i == j:
+                    axes.hist(columnForAbscissas, facecolor=Constants.DEFAULT_HISTOGRAM_COLOR)
+                    axes.set_title("гистограмма tsne var "+str(i))
+                else:
+                    axes.plot(columnForAbscissas, columnForOrdinates,
+                              marker=Constants.DEFAULT_POINT_SHAPE,
+                              linestyle="None",
+                              markersize=Constants.DEFAULT_MARKER_SIZE_SMALL,
+                              color=Constants.DEFAULT_POINT_COLOR)
+                    axes.set_title("tsne var "+str(i)+ " by "+str(j))
+                for item in ([axes.title, axes.xaxis.label, axes.yaxis.label] +
+                             axes.get_xticklabes() + axes.get_yticklabels()):
+                    item.set_fontsize(8)
+                axes.tick_params(axis=u'both', which=u'both', length=0)'''
+        '''
+
+        
+        axes.scatterMatrixXIndex = 0
+        axes.scatterMatrixYIndex = columnCount
+        columnForAbscissas = [1,2,3,4,5]
+        columnForOrdinates = [10,-1,2,-3,8]
+        axes.plot(columnForAbscissas, columnForOrdinates,
+                  marker=Constants.DEFAULT_POINT_SHAPE,
+                  linestyle="None",
+                  markersize=Constants.DEFAULT_MARKER_SIZE_SMALL,
+                  color=Constants.DEFAULT_POINT_COLOR)
+        '''
         self.matrixWidget.mpl_connect('button_press_event', self.canvasClicked)
         self.figure.tight_layout()
         self.matrixWidget.draw()
         self.matrixScrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.matrixScrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+    def get_temp_tsne_column(self, column_number):
+        temp_list = list()
+        for i in range(0,len(self.temp_tsne_data)):
+            temp_list.append(list(self.temp_tsne_data).__getitem__(i).__getitem__(column_number))
+        return temp_list
+
+    '''
+    def create_temp_tsne_excel(self):
+        print("run create temp tsne")
+
+    def output_temp_excel(self):
+
+    def copy_main_excel_to_temp(self):
+        shutil.
+    '''
 
     def refreshCanvas(self):
         """ Полное обновление изображения. Очищает канвас и отрисовывает все заново.
@@ -297,6 +393,7 @@ class MainWindow(QMainWindow):
                         cluster.draw2DProjection(axes, columns[i].getIndex(), columns[j].getIndex(), Constants.DEFAULT_MARKER_SIZE_BIG)
                     dummyCluster = self.globalData.getDummyCluster(self.clusters)
                     dummyCluster.draw2DProjection(axes, columns[i].getIndex(), columns[j].getIndex(), Constants.DEFAULT_MARKER_SIZE_SMALL)
+
                     if self.sphere is not None:
                        point = self.sphere[0].getProjection(i, j)
                        self.circle = plt.Circle((point.getX(), point.getY()), self.sphere[1], color='green', fill=False)
@@ -327,7 +424,17 @@ class MainWindow(QMainWindow):
         """
         self.dbscanwindow = DBScanWindow(self)
 
+
     def createAdditionalProjection(self):
         self.additionalProjectionWindow = AdditionalProjectionWindow(self)
+
+    '''  
+         TSNE
+    '''
+    def tsneoptionChosen(self):
+        # Вызывает окно алгоритма t-SNE
+        self.dbscanwindow = TSNEWindow(self)
+
+
 
 

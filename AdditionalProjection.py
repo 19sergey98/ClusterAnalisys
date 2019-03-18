@@ -9,6 +9,7 @@ import Constants
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
+
 class AdditionalProjectionWindow(QMainWindow):
 
     def __init__(self, parent):
@@ -31,7 +32,6 @@ class AdditionalProjectionWindow(QMainWindow):
         self.refreshImage()
         self.setGeometry(100, 100, 500, 500)
         self.show()
-
 
     def refreshImage(self):
         self.axes.clear()

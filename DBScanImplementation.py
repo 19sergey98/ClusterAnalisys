@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import *
 from UtilityClasses import Cluster
 import Constants
 
+
 class DBScanWindow(QMainWindow):
     def __init__(self, parent):
         super().__init__(parent)
@@ -74,6 +75,7 @@ class DBScanWindow(QMainWindow):
 
     def performAlgorithm(self):
         if self.prepareData():
+            print(*self.rowsToClusterize)
             iterCounter = 0
             while len(self.rowsToClusterize) > 0:
                 iterCounter += 1

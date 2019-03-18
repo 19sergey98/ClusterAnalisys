@@ -9,6 +9,7 @@ import math
 
 """
 
+
 class Data:
     """ Объекты этого класса представляют собой табличный набор данных.
         Кластеры оперируют объектами типа Data.
@@ -52,6 +53,19 @@ class Data:
 
     def getColumns(self):
         return self._columns
+
+    def addColumns(self, c_to_add,c_name):
+        self._columns.append(c_to_add)
+        self._columnNames.append(c_name)
+        self._columnCount = self._columnCount+1
+        # adjust rows
+        self._rows = []
+        for i, element in enumerate(self._columns[0]): #i - это строка
+            rowArray = []
+            for j in range (0, len(self._columns)):        #j - это колонка
+                rowArray.append(self._columns[j][i])
+            self._rows.append(Row(i, rowArray))
+        self._rowCount = len(self._rows)
 
     def columnCount(self):
         return self._columnCount
@@ -124,6 +138,7 @@ class Data:
                 return row
         return None
 
+
 class GlobalData(Data):
     """ Расширение типа Data, подразумевает хранение всего набора точек, с которыми идет работа.
 
@@ -171,6 +186,7 @@ class GlobalData(Data):
             newcolumn = Column(column.getName(), newdata, column.getIndex())
             newcolumns.append(newcolumn)
         return newcolumns
+
 
 class Cluster:
     """ Класс, представляющий из себя кластер. Кластер содержит в качестве данных объект типа Data
@@ -251,6 +267,24 @@ class Cluster:
                   color=self.getColor(),
                   markersize = markersize)
 
+    def draw2DProjection_by_given_points(self, axes, xindex, yindex, markersize, xD=[], yD=[]):
+        """ Проецирует кластер на плоскость.
+
+        :param axes: элемент библиотеки matplotlib на который происходит проекция
+        :param xindex: переменная на оси X
+        :param yindex: переменная на оси Y
+        :return:
+        """
+        points = []
+        xData = xD
+        yData = yD
+
+        axes.plot(xData, yData,
+                  linestyle="None",
+                  marker=self.getShape(),
+                  color=self.getColor(),
+                  markersize = markersize)
+
     def evaluateMassCenter(self):
         """ Рассчитывает центр масс кластера
 
@@ -278,6 +312,7 @@ class Cluster:
 
     def remove(self, item):
         self._data.remove(item)
+
 
 class Row:
     """ Класс представляет из себя строку данных, интерпретируемую как многомерная точка.
@@ -374,6 +409,7 @@ class Row:
             rowToReturn.append(newElement)
         return rowToReturn #TODO возвращать объект типа Row вместо просто массива
 
+
 class Column:
     """ Класс представляет из себя колонку данных.
     Это удобнее чем просто массив, так как этот класс можно расширять по своему усмотрению.
@@ -441,6 +477,7 @@ class Column:
 
     def append(self, value):
         self._data.append(value)
+
 
 class Point:
     """ Простой класс, представляющий из себя двумерную точку на плоскости.
