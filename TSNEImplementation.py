@@ -100,12 +100,6 @@ class TSNEWindow(QMainWindow):
            # self.remove_all_frames()
 
 
-            '''
-            for i in range(len(data_numpy_array)):
-                for j in range(len(data_numpy_array.__getitem__(i))):
-                    print()
-            '''
-
     def perform_without_drawing(self,dim):
         if self.prepareData():
             a = []
@@ -137,9 +131,6 @@ class TSNEWindow(QMainWindow):
             print("result class - ", result.__class__.__name__)
             return result
 
-    #def update_frames(dt):
-     #   global counter
-    #    counter = (counter + dt) % 2
 
     def prepareData(self):
         """ Подготавилвает данные, нужные для работы алгоритма

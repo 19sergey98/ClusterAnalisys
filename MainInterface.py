@@ -15,7 +15,6 @@ import GraphInspection
 from ClusterAdjustments import ClusterDialog
 from ClusterPointsAdjustments import ClusterPointsView
 from DBScanImplementation import DBScanWindow
-from TSNEImplementation import TSNEWindow
 from DataPreview import DataPreviewWindow
 from AdditionalProjection import AdditionalProjectionWindow
 from UtilityClasses import *
@@ -311,47 +310,7 @@ class MainWindow(QMainWindow):
                               markersize=Constants.DEFAULT_MARKER_SIZE_SMALL,
                               color=Constants.DEFAULT_POINT_COLOR)
                     axes.set_title(columnForOrdinates.getName() + "_" + columnForAbscissas.getName())
-                '''for item in ([axes.title, axes.xaxis.label, axes.yaxis.label] +
-                                 axes.get_xticklabels() + axes.get_yticklabels()):
-                    item.set_fontsize(8)
-                axes.tick_params(axis=u'both', which=u'both', length=0)'''
 
-        # additional t-SNE projections
-        '''
-        for j in range(0, self.temp_tsne_size):
-            for i in range(0, self.temp_tsne_size):
-                columnForAbscissas = Column("tsne var "+str(i), self.get_temp_tsne_column(i), columnCount+i)
-                columnForOrdinates = Column("tsne var "+str(j), self.get_temp_tsne_column(j), columnCount+j)
-                axes = self.figure.add_subplot(columnCount+self.temp_tsne_size+1, columnCount+self.temp_tsne_size, columnCount*columnCount + j*self.temp_tsne_size + i + 1)
-                axes.scatterMatrixXIndex = columnForAbscissas.getIndex()
-                axes.scatterMatrixYIndex = columnForOrdinates.getIndex()
-                if i == j:
-                    axes.hist(columnForAbscissas, facecolor=Constants.DEFAULT_HISTOGRAM_COLOR)
-                    axes.set_title("гистограмма tsne var "+str(i))
-                else:
-                    axes.plot(columnForAbscissas, columnForOrdinates,
-                              marker=Constants.DEFAULT_POINT_SHAPE,
-                              linestyle="None",
-                              markersize=Constants.DEFAULT_MARKER_SIZE_SMALL,
-                              color=Constants.DEFAULT_POINT_COLOR)
-                    axes.set_title("tsne var "+str(i)+ " by "+str(j))
-                for item in ([axes.title, axes.xaxis.label, axes.yaxis.label] +
-                             axes.get_xticklabes() + axes.get_yticklabels()):
-                    item.set_fontsize(8)
-                axes.tick_params(axis=u'both', which=u'both', length=0)'''
-        '''
-
-        
-        axes.scatterMatrixXIndex = 0
-        axes.scatterMatrixYIndex = columnCount
-        columnForAbscissas = [1,2,3,4,5]
-        columnForOrdinates = [10,-1,2,-3,8]
-        axes.plot(columnForAbscissas, columnForOrdinates,
-                  marker=Constants.DEFAULT_POINT_SHAPE,
-                  linestyle="None",
-                  markersize=Constants.DEFAULT_MARKER_SIZE_SMALL,
-                  color=Constants.DEFAULT_POINT_COLOR)
-        '''
         self.matrixWidget.mpl_connect('button_press_event', self.canvasClicked)
         self.figure.tight_layout()
         self.matrixWidget.draw()
@@ -364,15 +323,6 @@ class MainWindow(QMainWindow):
             temp_list.append(list(self.temp_tsne_data).__getitem__(i).__getitem__(column_number))
         return temp_list
 
-    '''
-    def create_temp_tsne_excel(self):
-        print("run create temp tsne")
-
-    def output_temp_excel(self):
-
-    def copy_main_excel_to_temp(self):
-        shutil.
-    '''
 
     def refreshCanvas(self):
         """ Полное обновление изображения. Очищает канвас и отрисовывает все заново.
@@ -434,7 +384,3 @@ class MainWindow(QMainWindow):
     def tsneoptionChosen(self):
         # Вызывает окно алгоритма t-SNE
         self.dbscanwindow = TSNEWindow(self)
-
-
-
-

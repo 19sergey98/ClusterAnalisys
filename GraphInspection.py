@@ -1,7 +1,10 @@
+import copy
+
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 
+from PointsDroppingWin import PointsDroppingWin
 import Utils
 import operator
 import numpy as np
@@ -81,11 +84,20 @@ class GraphInspectionWindow(QMainWindow):
         self.createClusterButton.clicked.connect(self.createClusterClicked)
         self.selectionCompleteButton = QPushButton("Завершить выделение")
         self.selectionCompleteButton.clicked.connect(self.selectionCompleted)
+        ##buttons for points remove
+        self.drop_points_button = QPushButton("Отбросить точки")
+        self.drop_points_button.clicked.connect(self.drop_points_pressed)
+        ##
+        self.distances_with_indexes=[]
+        self.distances_with_indexes_manh=[]
+
         self.buttonGroupLayout.addWidget(self.selectionCompleteButton, 1, 1)
         self.buttonGroupLayout.addWidget(self.clearSelectionButton, 1, 2)
         self.buttonGroupLayout.addWidget(self.createClusterButton, 2, 1, 1, 2)
+        self.buttonGroupLayout.addWidget(self.drop_points_button,3,1,1,2)
+        ##
         self.newClusterViewLayout.addWidget(self.buttonGroup)
-
+        ##
         self.existingClusterView = QWidget()
         self.tabWidget.addTab(self.existingClusterView, "Существующий кластер")
 
@@ -94,7 +106,124 @@ class GraphInspectionWindow(QMainWindow):
         self.tabWidget.currentChanged.connect(self.tabChanged)
         self.statusBar().showMessage("Готово")
 
+        self.indexes_to_remove = set()
+        self.all_points = []
+        self.all_points_table = []
         self.show()
+        self.indexes_shift = 0
+
+    def set_indexes_shift(self):
+        self.indexes_shift = min(self.distances_with_indexes[1])
+
+    def check(self):
+        print("we in right one")
+
+    def drop_points_pressed(self):
+        """ Обработчик клика на кнопку "Отбросить точки"
+        """
+        self.p_d_w = PointsDroppingWin(self)
+
+    def drop_points(self, bar_limit_value):
+        """ Обработчик клика на кнопку "Отбросить точки по Евклиду"
+        """
+        for i in range(0,len(self.distances_with_indexes[1])):
+            if(self.distances_with_indexes[1][i] > bar_limit_value):
+                self.indexes_to_remove.add(self.distances_with_indexes[0][i])
+
+        # remove points
+        indexes = sorted(self.indexes_to_remove, reverse=True)
+        print("all points= ", self.all_points)
+        temp = copy.deepcopy(self.all_points)
+        print("temp= ",temp)
+        print("indexes = ",indexes)
+        for index in indexes:
+             del temp[index]
+             #temp_table.removeRow(index)
+        # updata bars
+        self._selectedPoints = temp
+        #self.pointsTable = temp_table
+        self.refreshPlot()
+        self.refreshBarChart()
+        self.refreshManhBarChart()
+        self.refresh_points_table()
+        ### drawing
+        selectedXData = [] # TODO избавиться от дублирования кода и сделать функцию drawSelectedPoints.
+        # Речь идет о таком же механизме рисования в selectionCompleted
+        selectedYData = []
+        for i, point in enumerate(self._selectedPoints):
+            selectedXData.append(point.getX())
+            selectedYData.append(point.getY())
+            self._axes.plot(selectedXData, selectedYData,
+                            linestyle="None",
+                            marker=Constants.DEFAULT_SELECTION_SHAPE,
+                            color=Constants.DEFAULT_SELECTION_COLOR,
+                            markersize=Constants.DEFAULT_SELECTION_POINT_SIZE)
+        Utils.drawPolygon(self._selectionPolygon, self.graphWidget)
+
+    def drop_points_manh(self, bar_limit_value):
+        """ Обработчик клика на кнопку "Отбросить точки по Манхэтэну"
+        """
+        print("indexsgitf " , self.indexes_shift)
+
+        print("len = ", len(self.distances_with_indexes_manh[1]))
+        print(self.distances_with_indexes_manh)
+        for i in range(0, len(self.distances_with_indexes_manh[1])):
+            if (self.distances_with_indexes_manh[1][i] > bar_limit_value):
+                self.indexes_to_remove.add(self.distances_with_indexes_manh[0][i])
+
+        # remove points
+        indexes = sorted(self.indexes_to_remove, reverse=True)
+        print(self.all_points)
+        temp = copy.deepcopy(self.all_points)
+        # temp_table = copy.deepcopy(self.all_points_table)
+        print(temp)
+        print(indexes)
+        for index in indexes:
+            del temp[index]
+            print("index")
+                    # temp_table.removeRow(index)
+        # updata bars
+        self._selectedPoints = temp
+        # self.pointsTable = temp_table
+        self.refreshPlot()
+        self.refreshBarChart()
+        self.refreshManhBarChart()
+        self.refresh_points_table()
+        ### drawing
+        selectedXData = []  # TODO избавиться от дублирования кода и сделать функцию drawSelectedPoints.
+        # Речь идет о таком же механизме рисования в selectionCompleted
+        selectedYData = []
+        for i, point in enumerate(self._selectedPoints):
+            selectedXData.append(point.getX())
+            selectedYData.append(point.getY())
+            self._axes.plot(selectedXData, selectedYData,
+                            linestyle="None",
+                            marker=Constants.DEFAULT_SELECTION_SHAPE,
+                            color=Constants.DEFAULT_SELECTION_COLOR,
+                            markersize=Constants.DEFAULT_SELECTION_POINT_SIZE)
+        Utils.drawPolygon(self._selectionPolygon, self.graphWidget)
+
+    def get_distances(self):
+        xcoords = np.arange(len(self._selectedPoints))
+        distances = []
+        indexes = self.getIndexList()
+        massCenter = self.evaluateSelectionMassCenter()
+        significancefactors = self.parent().globalData.getSignificanceFactors()
+        for row in self.convertPointsToRows():
+            distances.append(row.distanceTo(massCenter, significancefactors))
+
+        return distances
+
+    def get_distances_manh(self):
+        xcoords = np.arange(len(self._selectedPoints))
+        distances = []
+        indexes = self.getIndexList()
+        massCenter = self.evaluateSelectionMassCenter()
+        significancefactors = self.parent().globalData.getSignificanceFactors()
+        for row in self.convertPointsToRows():
+            distances.append(row.manhattanDistanceTo(massCenter, significancefactors))
+
+        return distances
 
     def createClusterClicked(self):
         """ Обработчик клика на кнопку "Создать кластер"
@@ -120,7 +249,6 @@ class GraphInspectionWindow(QMainWindow):
 
     def selectionCompleted(self):
         """ Обработчик клика на кнопку "Завершить выделение"
-
         """
         self._selectedPoints.clear()
         self.pointsTable.setRowCount(0)
@@ -160,9 +288,35 @@ class GraphInspectionWindow(QMainWindow):
                                 color = Constants.DEFAULT_SELECTION_COLOR,
                                 markersize = Constants.DEFAULT_SELECTION_POINT_SIZE)
             self.pointsTable.setVerticalHeaderLabels(verticalHeaders)
+            # # #
+            self.all_points = copy.deepcopy(self._selectedPoints)
+            # # #
             Utils.drawPolygon(self._selectionPolygon, self.graphWidget)
             self.refreshBarChart()
             self.refreshManhBarChart()
+
+    def refresh_points_table(self):
+        selectedXData = []
+        selectedYData = []
+        verticalHeaders = []
+        for i, point in enumerate(self._selectedPoints):
+            verticalHeaders.append(str(point.getIndex()))
+            selectedXData.append(point.getX())
+            selectedYData.append(point.getY())
+            self.pointsTable.setRowCount(self.pointsTable.rowCount() + 1)
+            self.pointsTable.setItem(i, 0, QTableWidgetItem(str(point.getX())))
+            self.pointsTable.setItem(i, 1, QTableWidgetItem(str(point.getY())))
+            removePointButton = QPushButton("Убрать")
+            index = QPersistentModelIndex(self.pointsTable.model().index(i, 2))
+            removePointButton.clicked.connect(
+                lambda *args, index=index: self.removePoint(index.row()))
+            self.pointsTable.setCellWidget(i, 2, removePointButton)
+            self._axes.plot(selectedXData, selectedYData,
+                            linestyle="None",
+                            marker=Constants.DEFAULT_SELECTION_SHAPE,
+                            color=Constants.DEFAULT_SELECTION_COLOR,
+                            markersize=Constants.DEFAULT_SELECTION_POINT_SIZE)
+        self.pointsTable.setVerticalHeaderLabels(verticalHeaders)
 
     def removePoint(self, index):
         """ Удаляет точку из выделения
@@ -187,7 +341,6 @@ class GraphInspectionWindow(QMainWindow):
                             color=Constants.DEFAULT_SELECTION_COLOR,
                             markersize=Constants.DEFAULT_SELECTION_POINT_SIZE)
         Utils.drawPolygon(self._selectionPolygon, self.graphWidget)
-
 
     def clearSelection(self):
         """ Обработчик клика на кнопку "Очистать выделение"
@@ -310,6 +463,7 @@ class GraphInspectionWindow(QMainWindow):
         for row in self.convertPointsToRows():
             distances.append(row.distanceTo(massCenter, significancefactors))
         sorteddata = self.sortBarData(indexes, distances)
+        self.distances_with_indexes = sorteddata
         self.axes.bar(xcoords, sorteddata[1], align="center", tick_label=sorteddata[0])
         if len(self._selectedPoints) > 10:
             for item in self.axes.get_xticklabels():
@@ -327,6 +481,7 @@ class GraphInspectionWindow(QMainWindow):
         for row in self.convertPointsToRows():
             distances.append(row.manhattanDistanceTo(massCenter, significancefactors))
         sorteddata = self.sortBarData(indexes, distances)
+        self.distances_with_indexes_manh = sorteddata
         self.axes_manh.bar(xcoords, sorteddata[1], align="center", tick_label=sorteddata[0])
         if len(self._selectedPoints) > 10:
             for item in self.axes_manh.get_xticklabels():

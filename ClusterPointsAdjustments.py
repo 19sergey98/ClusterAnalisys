@@ -29,7 +29,6 @@ class ClusterPointsView(QMainWindow):
         self.unbusyPointsTable = QTableWidget()
         self.tabletabs.addTab(self.unbusyPointsTable, "Добавление точек")
         self.layout.addWidget(self.tabletabs)
-
         self.figure = Figure()
         self.barWidget = FigureCanvas(self.figure)
         self.barWidget.mpl_connect('button_press_event', self.onclickonbar)
