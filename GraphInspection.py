@@ -106,17 +106,11 @@ class GraphInspectionWindow(QMainWindow):
         self.tabWidget.currentChanged.connect(self.tabChanged)
         self.statusBar().showMessage("Готово")
 
-        self.indexes_to_remove = set()
-        self.all_points = []
-        self.all_points_table = []
+        #self.indexes_to_remove = set()
+        #self.real_indexes_to_remove = []
+        #self.all_points = []
+        #self.all_points_table = []
         self.show()
-        self.indexes_shift = 0
-
-    def set_indexes_shift(self):
-        self.indexes_shift = min(self.distances_with_indexes[1])
-
-    def check(self):
-        print("we in right one")
 
     def drop_points_pressed(self):
         """ Обработчик клика на кнопку "Отбросить точки"
@@ -126,22 +120,21 @@ class GraphInspectionWindow(QMainWindow):
     def drop_points(self, bar_limit_value):
         """ Обработчик клика на кнопку "Отбросить точки по Евклиду"
         """
+        indexes_to_remove=[]
+
         for i in range(0,len(self.distances_with_indexes[1])):
             if(self.distances_with_indexes[1][i] > bar_limit_value):
-                self.indexes_to_remove.add(self.distances_with_indexes[0][i])
+                indexes_to_remove.append(self.distances_with_indexes[0][i])
 
         # remove points
-        indexes = sorted(self.indexes_to_remove, reverse=True)
-        print("all points= ", self.all_points)
-        temp = copy.deepcopy(self.all_points)
-        print("temp= ",temp)
-        print("indexes = ",indexes)
-        for index in indexes:
-             del temp[index]
-             #temp_table.removeRow(index)
+        temp_indexes_to_remove = self.get_indexes_by_real_one(self.getIndexList(), indexes_to_remove)
+        print("temp подлежащие удалению", temp_indexes_to_remove)
+        temp_indexes_to_remove = sorted(temp_indexes_to_remove, reverse=True)
+        print("подлежат удалению", temp_indexes_to_remove)
+        for index in temp_indexes_to_remove:
+            del self._selectedPoints[index]
+
         # updata bars
-        self._selectedPoints = temp
-        #self.pointsTable = temp_table
         self.refreshPlot()
         self.refreshBarChart()
         self.refreshManhBarChart()
@@ -163,32 +156,26 @@ class GraphInspectionWindow(QMainWindow):
     def drop_points_manh(self, bar_limit_value):
         """ Обработчик клика на кнопку "Отбросить точки по Манхэтэну"
         """
-        print("indexsgitf " , self.indexes_shift)
-
-        print("len = ", len(self.distances_with_indexes_manh[1]))
+        indexes_to_remove=[]
         print(self.distances_with_indexes_manh)
+        print("tried to drop with ",bar_limit_value)
+
         for i in range(0, len(self.distances_with_indexes_manh[1])):
             if (self.distances_with_indexes_manh[1][i] > bar_limit_value):
-                self.indexes_to_remove.add(self.distances_with_indexes_manh[0][i])
+                indexes_to_remove.append(self.distances_with_indexes_manh[0][i])
+                print("удалению подлежит индекс ",self.distances_with_indexes_manh[0][i],"с расстоянием ",self.distances_with_indexes_manh[1][i])
 
         # remove points
-        indexes = sorted(self.indexes_to_remove, reverse=True)
-        print(self.all_points)
-        temp = copy.deepcopy(self.all_points)
-        # temp_table = copy.deepcopy(self.all_points_table)
-        print(temp)
-        print(indexes)
-        for index in indexes:
-            del temp[index]
-            print("index")
-                    # temp_table.removeRow(index)
+        temp_indexes_to_remove = self.get_indexes_by_real_one(self.getIndexList(), indexes_to_remove)
+        print("temp подлежащие удалению", temp_indexes_to_remove)
+        temp_indexes_to_remove = sorted(temp_indexes_to_remove, reverse=True)
+        print("подлежат удалению", temp_indexes_to_remove)
+        for index in temp_indexes_to_remove:
+            del self._selectedPoints[index]
         # updata bars
-        self._selectedPoints = temp
-        # self.pointsTable = temp_table
         self.refreshPlot()
         self.refreshBarChart()
         self.refreshManhBarChart()
-        self.refresh_points_table()
         ### drawing
         selectedXData = []  # TODO избавиться от дублирования кода и сделать функцию drawSelectedPoints.
         # Речь идет о таком же механизме рисования в selectionCompleted
@@ -202,28 +189,15 @@ class GraphInspectionWindow(QMainWindow):
                             color=Constants.DEFAULT_SELECTION_COLOR,
                             markersize=Constants.DEFAULT_SELECTION_POINT_SIZE)
         Utils.drawPolygon(self._selectionPolygon, self.graphWidget)
+        self.refresh_points_table()
 
-    def get_distances(self):
-        xcoords = np.arange(len(self._selectedPoints))
-        distances = []
-        indexes = self.getIndexList()
-        massCenter = self.evaluateSelectionMassCenter()
-        significancefactors = self.parent().globalData.getSignificanceFactors()
-        for row in self.convertPointsToRows():
-            distances.append(row.distanceTo(massCenter, significancefactors))
-
-        return distances
-
-    def get_distances_manh(self):
-        xcoords = np.arange(len(self._selectedPoints))
-        distances = []
-        indexes = self.getIndexList()
-        massCenter = self.evaluateSelectionMassCenter()
-        significancefactors = self.parent().globalData.getSignificanceFactors()
-        for row in self.convertPointsToRows():
-            distances.append(row.manhattanDistanceTo(massCenter, significancefactors))
-
-        return distances
+    def get_indexes_by_real_one(self, all_selected_indexes, indexes_to_resolve):
+        genuine_indexes_to_remove = []
+        for cur in indexes_to_resolve:
+            for i in range(0,len(all_selected_indexes)):
+                if(cur == all_selected_indexes[i]):
+                    genuine_indexes_to_remove.append(i)
+        return genuine_indexes_to_remove
 
     def createClusterClicked(self):
         """ Обработчик клика на кнопку "Создать кластер"
@@ -299,6 +273,7 @@ class GraphInspectionWindow(QMainWindow):
         selectedXData = []
         selectedYData = []
         verticalHeaders = []
+        self.pointsTable.clear()
         for i, point in enumerate(self._selectedPoints):
             verticalHeaders.append(str(point.getIndex()))
             selectedXData.append(point.getX())
@@ -317,6 +292,7 @@ class GraphInspectionWindow(QMainWindow):
                             color=Constants.DEFAULT_SELECTION_COLOR,
                             markersize=Constants.DEFAULT_SELECTION_POINT_SIZE)
         self.pointsTable.setVerticalHeaderLabels(verticalHeaders)
+        self.pointsTable.show()
 
     def removePoint(self, index):
         """ Удаляет точку из выделения
